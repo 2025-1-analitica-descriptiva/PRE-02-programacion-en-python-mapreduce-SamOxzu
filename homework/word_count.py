@@ -6,6 +6,7 @@ import fileinput
 import glob
 import os.path
 import time
+import string
 from itertools import groupby
 
 
@@ -17,9 +18,29 @@ from itertools import groupby
 # original se llama text0.txt, el archivo generado se llamará text0_1.txt,
 # text0_2.txt, etc.
 #
+
 def copy_raw_files_to_input_folder(n):
     """Funcion copy_files"""
 
+    # Verifica si la carpeta de entrada existe, si no, la crea
+    if not os.path.exists("files/input"):
+        os.makedirs("files/input")
+
+    # Crea una lista con los nombres de los archivos en la carpeta files/raw
+    # y empieza a recorrerlos.
+    for file in glob.glob("files/raw/*"):
+        # n veces
+        for i in range(1, n + 1):
+            # Abre el archivo original
+            with open(file, "r", encoding="utf-8") as f:
+                # Separa el nombre del archivo original y le añade el sufijo
+                # que indica el número de copia.
+                with open(
+                    f"files/input/{os.path.basename(file).split('.')[0]}_{i}.txt",
+                    "w",
+                    encoding="utf-8",
+                ) as f2:
+                    f2.write(f.read()) # Copia el contenido del archivo original
 
 #
 # Escriba la función load_input que recive como parámetro un folder y retorna
@@ -36,8 +57,24 @@ def copy_raw_files_to_input_folder(n):
 #     ('text2.txt'. 'hypotheses.')
 #   ]
 #
+
+
 def load_input(input_directory):
     """Funcion load_input"""
+
+    # Inicializa una lista vacía
+    sequence = []
+
+    # Encuentra todos los archivos en el directorio de entrada
+    files = glob.glob(f"{input_directory}/*")
+
+    # Recorre cada archivo y cada línea de los archivos
+    with fileinput.input(files=files) as f:
+        for line in f:
+            # Si la línea no está vacía, la agrega a la lista
+            sequence.append((fileinput.filename(), line))
+    # Devuelve la lista de tuplas
+    return sequence
 
 
 #
@@ -47,6 +84,15 @@ def load_input(input_directory):
 #
 def line_preprocessing(sequence):
     """Line Preprocessing"""
+
+    # Convierte cada línea a minúsculas y elimina los signos de puntuación
+    # usando str.maketrans y str.translate.
+    sequence = [
+        (key, value.translate(str.maketrans("", "", string.punctuation)).lower())
+        for key, value in sequence
+    ]
+    # Retorna el sequence transformado
+    return sequence
 
 
 #
@@ -61,8 +107,14 @@ def line_preprocessing(sequence):
 #     ...
 #   ]
 #
+
 def mapper(sequence):
     """Mapper"""
+    # Inicializa una especie de conteo de palabras
+    # separando las palabras por espacios en blanco
+    # e inicializa el conteo en 1. En tuplas.
+    return [(word, 1) for _, value in sequence for word in value.split()]
+
 
 
 #
@@ -123,6 +175,9 @@ def create_marker(output_directory):
 #
 def run_job(input_directory, output_directory):
     """Job"""
+    sequence = load_input(input_directory)
+    sequence = line_preprocessing(sequence)
+    sequence = mapper(sequence)
 
 
 if __name__ == "__main__":
