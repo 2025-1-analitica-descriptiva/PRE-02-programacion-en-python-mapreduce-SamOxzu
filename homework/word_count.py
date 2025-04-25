@@ -22,9 +22,11 @@ from itertools import groupby
 def copy_raw_files_to_input_folder(n):
     """Funcion copy_files"""
 
-    # Verifica si la carpeta de entrada existe, si no, la crea
-    if not os.path.exists("files/input"):
-        os.makedirs("files/input")
+    if os.path.exists("files/input"): # Verifica si el directorio existe
+        for file in glob.glob("files/input/*"): # Busca todos los archivos en el directorio
+            os.remove(file) # Elimina los archivos encontrados
+        os.rmdir("files/input") # Elimina el directorio vacío (es necesario que esté vacío)
+    os.makedirs("files/input") # Crea el directorio (indiferente de si existía o no)
 
     # Crea una lista con los nombres de los archivos en la carpeta files/raw
     # y empieza a recorrerlos.
@@ -130,6 +132,9 @@ def mapper(sequence):
 #
 def shuffle_and_sort(sequence):
     """Shuffle and Sort"""
+    # Ordena la colección sequence por el primer elemento de cada tupla
+    # (la clave) usando sorted y una función lambda como clave de ordenación.
+    return sorted(sequence, key=lambda x: x[0])
 
 
 #
@@ -140,6 +145,13 @@ def shuffle_and_sort(sequence):
 #
 def reducer(sequence):
     """Reducer"""
+    result = []
+    # Agrupa la secuencia por la clave (palabra), la agrupación es group y la clave key
+    for key, group in groupby(sequence, lambda x: x[0]):
+        # Agrega a la lista result una tupla por cada palabra, acompañada
+        # por cuántas veces aparece en su agrupación (sumando los valores).
+        result.append((key, sum(value for _, value in group)))
+    return result
 
 
 #
@@ -148,6 +160,12 @@ def reducer(sequence):
 #
 def create_ouptput_directory(output_directory):
     """Create Output Directory"""
+
+    if os.path.exists(output_directory): # Verifica si el directorio existe
+        for file in glob.glob(f"{output_directory}/*"): # Busca todos los archivos en el directorio
+            os.remove(file) # Elimina los archivos encontrados
+        os.rmdir(output_directory) # Elimina el directorio vacío (es necesario que esté vacío)
+    os.makedirs(output_directory) # Crea el directorio (indiferente de si existía o no)
 
 
 #
@@ -160,6 +178,17 @@ def create_ouptput_directory(output_directory):
 #
 def save_output(output_directory, sequence):
     """Save Output"""
+    # Abre (y crea) el archivo part-00000 en modo escritura y codificación utf-8
+    # en el directorio de salida entregado como parámetro.
+    with open(f"{output_directory}/part-00000", "w", encoding="utf-8") as f:
+        # Iteramos sobre la secuencia con cada pareja de clave y valor
+        for key, value in sequence:
+            # Escribimos en el archivo la clave y el valor separados por un tabulador
+            # (tab) y un salto de línea (\n), el tabulador se usa para separar los
+            # elementos de la tupla, ya que usar una coma o un espacio podría
+            # generar confusión al leer el archivo (ya que podrían hacer parte de
+            # la clave o el valor).
+            f.write(f"{key}\t{value}\n")
 
 
 #
@@ -168,6 +197,12 @@ def save_output(output_directory, sequence):
 #
 def create_marker(output_directory):
     """Create Marker"""
+    # Abre (y crea) el archivo _SUCCESS en modo escritura y codificación utf-8
+    # en el directorio de salida entregado como parámetro.
+    # Este archivo es un marcador (bandera) que indica que el trabajo se ha completado
+    # correctamente.
+    with open(f"{output_directory}/_SUCCESS", "w", encoding="utf-8") as f:
+        f.write("")
 
 
 #
@@ -178,6 +213,11 @@ def run_job(input_directory, output_directory):
     sequence = load_input(input_directory)
     sequence = line_preprocessing(sequence)
     sequence = mapper(sequence)
+    sequence = shuffle_and_sort(sequence)
+    sequence = reducer(sequence)
+    create_ouptput_directory(output_directory)
+    save_output(output_directory, sequence)
+    create_marker(output_directory)
 
 
 if __name__ == "__main__":
